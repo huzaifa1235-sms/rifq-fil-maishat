@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taskflow - Modern To-Do List</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Custom scrollbar for list container */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.03);
+            border-radius: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.25);
+        }
+
+        /* Smooth item transition styling */
+        .task-item {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .task-item.removing {
+            opacity: 0;
+            transform: translateX(30px) scale(0.95);
+        }
+
+        /* Custom Checkbox Styling */
+        .checkbox-custom {
+            transition: all 0.2s ease;
+        }
+        .checkbox-custom:checked {
+            background-color: #4f46e5;
+            border-color: #4f46e5;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col items-center justify-start p-4 sm:p-6 md:p-10">
+
+    <!-- Main Container -->
+    <div class="w-full max-w-md md:max-w-lg bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-100 flex flex-col overflow-hidden my-auto transition-all">
+        
+        <!-- Header Header -->
+        <header class="p-6 pb-4 border-b border-slate-100 bg-gradient-to-r from-indigo-600 via-indigo-600 to-violet-600 text-white">
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="check-circle-2" class="w-7 h-7 stroke-[2.5]"></i>
+                    <h1 class="text-2xl font-bold tracking-tight">Taskflow</h1>
+                </div>
+                <span id="currentDate" class="text-xs font-medium bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm"></span>
+            </div>
+            <p class="text-indigo-100 text-sm font-light">Organize your daily targets efficiently.</p>
+        </header>
+
+        <!-- Input Form Section -->
+        <section class="p-6 pb-4">
+            <form id="taskForm" class="flex gap-2">
+                <div class="relative flex-grow">
+                    <input 
+                        type="text" 
+                        id="taskInput" 
+                        placeholder="Add a new task..." 
+                        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 text-sm"
+                        autocomplete="off"
+                    >
+                </div>
+                <button 
+                    type="submit" 
+                    class="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white px-5 py-3 rounded-xl font-medium text-sm flex items-center justify-center transition-all duration-200 shadow-sm shadow-indigo-200 shrink-0"
+                    aria-label="Add task"
+                >
+                    <i data-lucide="plus" class="w-5 h-5"></i>
+                    <span class="hidden sm:inline ml-1">Add</span>
+                </button>
+            </form>
+            <!-- Toast notification message -->
+            <div id="toastMessage" class="hidden text-xs text-rose-500 mt-2 font-medium flex items-center gap-1">
+                <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i>
+                <span id="toastText">Please enter task description.</span>
+            </div>
+        </section>
+
+        <!-- Task Filters & Counter Bar -->
+        <section class="px-6 py-2 flex flex-wrap items-center justify-between gap-2 bg-slate-50/50 border-y border-slate-100">
+            <!-- Filter Tabs -->
+            <div class="flex items-center gap-1 p-1 bg-slate-200/60 rounded-lg text-xs font-medium text-slate-600" id="filterButtons">
+                <button data-filter="all" class="filter-btn px-3 py-1.5 rounded-md transition-all font-semibold bg-white text-indigo-600 shadow-sm">All</button>
+                <button data-filter="active" class="filter-btn px-3 py-1.5 rounded-md transition-all hover:text-slate-900">Active</button>
+                <button data-filter="completed" class="filter-btn px-3 py-1.5 rounded-md transition-all hover:text-slate-900">Completed</button>
+            </div>
+
+            <!-- Task Counter -->
+            <span id="taskCounter" class="text-xs text-slate-500 font-medium">0 tasks remaining</span>
+        </section>
+
+        <!-- Tasks List Container -->
+        <section class="p-6 pt-4 flex-grow">
+            <ul id="taskList" class="space-y-2.5 max-h-[360px] overflow-y-auto custom-scrollbar pr-1 min-h-[140px]">
+                <!-- Tasks dynamically injected here -->
+            </ul>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="hidden flex-col items-center justify-center py-10 text-center">
+                <div class="w-16 h-16 bg-indigo-50 text-indigo-400 rounded-full flex items-center justify-center mb-3">
+                    <i data-lucide="inbox" class="w-8 h-8 stroke-[1.5]"></i>
+                </div>
+                <h3 class="text-sm font-semibold text-slate-700 mb-1">No tasks found</h3>
+                <p class="text-xs text-slate-400 max-w-[200px]">Add tasks above to get started with your productivity journey!</p>
+            </div>
+        </section>
+
+        <!-- Footer Actions -->
+        <footer class="p-4 px-6 border-t border-slate-100 bg-slate-50/30 flex items-center justify-between text-xs text-slate-500">
+            <button 
+                id="clearCompletedBtn" 
+                class="hover:text-rose-600 transition-colors flex items-center gap-1.5 font-medium py-1 px-2 rounded hover:bg-rose-50 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-500"
+                disabled
+            >
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                Clear Completed
+            </button>
+            <span class="text-slate-400">Taskflow v1.0</span>
+        </footer>
+
+    </div>
+
+    <!-- Application JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // State Management
+            let tasks = JSON.parse(localStorage.getItem('taskflow_tasks')) || [
+                { id: 1, text: 'Welcome to Taskflow! 👋', completed: false },
+                { id: 2, text: 'Try adding a new task', completed: false },
+                { id: 3, text: 'Mark completed tasks with the checkbox', completed: true }
+            ];
+            let currentFilter = 'all';
+
+            // DOM Elements
+            const taskForm = document.getElementById('taskForm');
+            const taskInput = document.getElementById('taskInput');
+            const taskList = document.getElementById('taskList');
+            const emptyState = document.getElementById('emptyState');
+            const taskCounter = document.getElementById('taskCounter');
+            const clearCompletedBtn = document.getElementById('clearCompletedBtn');
+            const filterButtons = document.getElementById('filterButtons');
+            const toastMessage = document.getElementById('toastMessage');
+            const currentDateEl = document.getElementById('currentDate');
+
+            // Initialize Lucide Icons
+            lucide.createIcons();
+
+            // Display current date
+            const options = { weekday: 'short', month: 'short', day: 'numeric' };
+            currentDateEl.textContent = new Date().toLocaleDateString('en-US', options);
+
+            // LocalStorage Sync
+            const saveTasks = () => {
+                localStorage.setItem('taskflow_tasks', JSON.stringify(tasks));
+            };
+
+            // Render Tasks Function
+            const renderTasks = () => {
+                taskList.innerHTML = '';
+                
+                // Filter Logic
+                const filteredTasks = tasks.filter(task => {
+                    if (currentFilter === 'active') return !task.completed;
+                    if (currentFilter === 'completed') return task.completed;
+                    return true;
+                });
+
+                // Empty State Check
+                if (filteredTasks.length === 0) {
+                    emptyState.classList.remove('hidden');
+                    emptyState.classList.add('flex');
+                } else {
+                    emptyState.classList.add('hidden');
+                    emptyState.classList.remove('flex');
+                }
+
+                // Render Item List
+                filteredTasks.forEach(task => {
+                    const li = document.createElement('li');
+                    li.className = `task-item group flex items-center justify-between p-3.5 bg-white border border-slate-200/80 rounded-xl hover:border-slate-300 shadow-sm transition-all duration-200`;
+                    li.dataset.id = task.id;
+
+                    li.innerHTML = `
+                        <div class="flex items-center gap-3 flex-grow min-w-0 mr-2">
+                            <input 
+                                type="checkbox" 
+                                ${task.completed ? 'checked' : ''} 
+                                class="checkbox-custom w-5 h-5 rounded-md border-2 border-slate-300 text-indigo-600 focus:ring-0 cursor-pointer shrink-0"
+                                aria-label="Toggle completed state"
+                            >
+                            <span class="text-sm text-slate-700 font-medium truncate select-none ${task.completed ? 'line-through text-slate-400' : ''}">
+                                ${escapeHtml(task.text)}
+                            </span>
+                        </div>
+                        <button 
+                            class="delete-btn text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all focus:opacity-100 shrink-0"
+                            aria-label="Delete task"
+                        >
+                            <i data-lucide="trash-2" class="w-4 h-4 pointer-events-none"></i>
+                        </button>
+                    `;
+
+                    // Bind Events for Dynamically Created Elements
+                    const checkbox = li.querySelector('input[type="checkbox"]');
+                    checkbox.addEventListener('change', () => toggleTask(task.id));
+
+                    const deleteBtn = li.querySelector('.delete-btn');
+                    deleteBtn.addEventListener('click', () => deleteTask(task.id, li));
+
+                    taskList.appendChild(li);
+                });
+
+                // Re-initialize Lucide Icons for dynamic content
+                lucide.createIcons();
+
+                // Update Counters & Buttons State
+                updateSummary();
+            };
+
+            // Helper to sanitize text preventing XSS
+            const escapeHtml = (str) => {
+                const div = document.createElement('div');
+                div.appendChild(document.createTextNode(str));
+                return div.innerHTML;
+            };
+
+            // Add Task Logic
+            const addTask = (text) => {
+                const trimmedText = text.trim();
+                if (!trimmedText) {
+                    showToast('Task description cannot be empty.');
+                    return;
+                }
+                
+                hideToast();
+                const newTask = {
+                    id: Date.now(),
+                    text: trimmedText,
+                    completed: false
+                };
+
+                tasks.unshift(newTask);
+                saveTasks();
+                renderTasks();
+                taskInput.value = '';
+                taskInput.focus();
+            };
+
+            // Toggle Task Completion State
+            const toggleTask = (id) => {
+                tasks = tasks.map(task => 
+                    task.id === id ? { ...task, completed: !task.completed } : task
+                );
+                saveTasks();
+                renderTasks();
+            };
+
+            // Delete Task with Animation
+            const deleteTask = (id, element) => {
+                element.classList.add('removing');
+                setTimeout(() => {
+                    tasks = tasks.filter(task => task.id !== id);
+                    saveTasks();
+                    renderTasks();
+                }, 200);
+            };
+
+            // Clear Completed Tasks
+            const clearCompleted = () => {
+                tasks = tasks.filter(task => !task.completed);
+                saveTasks();
+                renderTasks();
+            };
+
+            // Update Summary Indicators
+            const updateSummary = () => {
+                const activeCount = tasks.filter(task => !task.completed).length;
+                const completedCount = tasks.filter(task => task.completed).length;
+
+                taskCounter.textContent = `${activeCount} ${activeCount === 1 ? 'task' : 'tasks'} remaining`;
+                clearCompletedBtn.disabled = completedCount === 0;
+            };
+
+            // Toast Helper
+            const showToast = (message) => {
+                toastMessage.querySelector('#toastText').textContent = message;
+                toastMessage.classList.remove('hidden');
+            };
+
+            const hideToast = () => {
+                toastMessage.classList.add('hidden');
+            };
+
+            // Event Listeners
+            taskForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                addTask(taskInput.value);
+            });
+
+            clearCompletedBtn.addEventListener('click', clearCompleted);
+
+            // Filter Tabs Controller
+            filterButtons.addEventListener('click', (e) => {
+                const targetBtn = e.target.closest('.filter-btn');
+                if (!targetBtn) return;
+
+                // Style handling
+                document.querySelectorAll('.filter-btn').forEach(btn => {
+                    btn.classList.remove('bg-white', 'text-indigo-600', 'shadow-sm', 'font-semibold');
+                    btn.classList.add('hover:text-slate-900');
+                });
+
+                targetBtn.classList.add('bg-white', 'text-indigo-600', 'shadow-sm', 'font-semibold');
+                targetBtn.classList.remove('hover:text-slate-900');
+
+                currentFilter = targetBtn.dataset.filter;
+                renderTasks();
+            });
+
+            // Initial Render
+            renderTasks();
+        });
+    </script>
+</body>
+</html>
